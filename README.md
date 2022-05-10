@@ -4,9 +4,13 @@ This repository contains links to Mappability Exclusion resources for SpliceWiz.
 
 Usage:
 ```{r}
+devtools::install_github("alexchwong/SpliceWiz")
 library(SpliceWiz)
+
+# Set path for SpliceWiz reference
 reference_path = "./Reference"
 FTP <- "ftp://ftp.ensembl.org/pub/release-94/"
+
 buildRef(
     reference_path = reference_path,
     fasta = paste0(FTP, "fasta/homo_sapiens/dna/",
