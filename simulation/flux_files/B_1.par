@@ -1,7 +1,6 @@
 ## Rationale
 ## Same as "Leveraging transcript quantification for fast computation of 
 ## alternative splicing profiles" Table S2, but with FRAG_UR_D0 = 3
-## Simulation is same as 201014 3v3
 
 ## File locations
 REF_FILE_NAME   ../ref/transcripts.gtf
