@@ -5,10 +5,16 @@ splicing simulation. Also, it contains the output files of SpliceWiz's processBA
 function, performed on the BAM files that were produced by alignment of 
 flux-simulator generated sequencing data.
 
-To view the SpliceWiz results:
+First, clone the repository into the working directory:
+```
+git clone https://github.com/alexchwong/SpliceWizResources.git
+```
+
+To view the SpliceWiz results, performing the following (in R / RStudio)
 
 ```{r}
 library(SpliceWiz)
+setwd("./simulation")
 
 # Generate reference file (hg38 v94)
 # Requires Bioconductor 3.14 or higher
