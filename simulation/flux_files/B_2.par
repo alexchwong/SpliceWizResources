@@ -1,0 +1,42 @@
+## Rationale
+## Same as "Leveraging transcript quantification for fast computation of 
+## alternative splicing profiles" Table S2, but with FRAG_UR_D0 = 3
+## Simulation is same as 201014 3v3
+
+## File locations
+REF_FILE_NAME   ../ref/transcripts.gtf
+GEN_DIR         ../hg38/
+
+## Fragmentation
+TSS_MEAN	25
+POLYA_SCALE	NaN
+POLYA_SHAPE	NaN
+
+FRAG_SUBSTRATE  RNA
+FRAG_METHOD     UR
+FRAG_UR_ETA     NaN
+FRAG_UR_DELTA	NaN
+FRAG_UR_D0      3
+
+## RT parameters
+RTRANSCRIPTION YES
+RT_MOTIF       default
+RT_PRIMER      RH
+RT_LOSSLESS    YES
+RT_MIN         500
+RT_MAX         5500
+
+## PCR / Filtering
+FILTERING         YES
+PCR_PROBABILITY	0.05
+GC_MEAN	NaN
+GC_SD	NaN
+
+## Sequencing
+READ_NUMBER	200000000
+READ_LENGTH	100
+PAIRED_END	YES
+FASTA		YES
+ERR_FILE	76
+
+UNIQUE_IDS	YES
