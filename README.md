@@ -23,7 +23,7 @@ NB: this git repository is approximately 640 Mb
 
 Please refer to the installation instructions viewable at https://github.com/alexchwong/SpliceWiz
 
-Briefly:
+Briefly, in R:
 
 ```{r}
 devtools::install_github("alexchwong/SpliceWiz")
@@ -41,7 +41,7 @@ Also, it contains the output files of SpliceWiz's processBAM()
 function, performed on the BAM files that were produced by alignment of 
 flux-simulator generated sequencing data.
 
-### Usage
+### Usage (in R/RStudio)
 
 ```{r}
 library(SpliceWiz)
@@ -93,10 +93,9 @@ p$final_plot     # displays plotly object (interactive plot)
 
 This repository also contains links to Mappability Exclusion resources for SpliceWiz. These files are intended for those who are running SpliceWiz on Bioconductor 3.13 or earlier.
 
-### Usage
+### Usage (in R)
 
 ```{r}
-devtools::install_github("alexchwong/SpliceWiz")
 library(SpliceWiz)
 
 # Set path for SpliceWiz reference
