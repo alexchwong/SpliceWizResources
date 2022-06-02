@@ -106,6 +106,11 @@ p$final_plot     # displays plotly object (interactive plot)
 Assuming the above code has already been run:
 
 ```{r}
+# Required packages that are not already SpliceWiz dependencies
+install.packages(c("dplyr", "ROCit"))
+```
+
+```{r}
 source("groundTruth.R")
 
 # Get ground truth values:
@@ -124,6 +129,21 @@ res <- ASE_DoubleExpSeq(se.opt, "Biology", "A", "B")
 PSIerror <- generatePSIerrors(se, res, gt, colnames(se)[1:3], "Reference")
 PSIerror$splice_type[PSIerror$splice_type %in% c("A3SS", "A5SS")] <- "AltSS"
 PSIerror$splice_type[PSIerror$splice_type %in% c("AFE", "ALE")] <- "AltTE"
+getPSIerrorAUC(PSIerror)
+
+# Plot PSI error curve
+plotPSIerror(PSIerror)
+
+# ROC generation:
+sc <- generateScoresAndClass(res, gt, "Reference")
+sc$splice_type[sc$splice_type %in% c("A3SS", "A5SS")] <- "AltSS"
+sc$splice_type[sc$splice_type %in% c("AFE", "ALE")] <- "AltTE"
+
+ROCdata <- generateROCdata(sc)
+getAUROC(ROCdata)
+
+# Plot ROC curve
+plotROCdata(ROCdata)
 ```
 
 ## Mappability Exclusion Resources for SpliceWiz

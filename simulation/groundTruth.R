@@ -105,9 +105,13 @@ plotPSIerror <- function(PSIerror) {
             mean_error = mean_diff, 
             cumfreq = seq_len(n()) * 100 / n()
         ) %>% ungroup() %>% arrange(mean_error)
-    p <- ggplot(SW.meandiff.summa, 
+    df <- rbind(
+        SW.meandiff.summa, 
+        SW.meandiff.summa %>% mutate(splice_type = "All Events")
+    )
+    p <- ggplot(df, 
         aes(x = mean_error * 100, y = cumfreq, color = splice_type)) + 
-        geom_line() + theme_white_legend
+        geom_line() + theme_white_legend + facet_wrap(vars(splice_type))
     return(p)
 }
 
