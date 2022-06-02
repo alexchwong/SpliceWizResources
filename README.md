@@ -49,12 +49,22 @@ setwd("./simulation")
 
 # Generate reference file (hg38 v94)
 # Requires Bioconductor 3.14 or higher
-buildRef(
-    reference_path = "./Reference",
-    fasta = "AH65745",
-    gtf = "AH64631",
-    genome_type = "hg38"
-)
+if(tools:::.BioC_version_associated_with_R_version() >= "3.14") {
+    buildRef(
+        reference_path = "./Reference",
+        fasta = "AH65745",
+        gtf = "AH64631",
+        genome_type = "hg38"
+    )
+} else {
+    buildRef(
+        reference_path = "./Reference",
+        fasta = "AH65745",
+        gtf = "AH64631",
+        genome_type = "hg38",
+        MappabilityRef = "../Mappability/hg38.MappabilityExclusion.bed.Rds"
+    )
+}
 
 # Collate the SpliceWiz output files into an experiment
 expr <- findSpliceWizOutput("./pb_output")
