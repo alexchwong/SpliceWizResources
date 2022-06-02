@@ -100,16 +100,14 @@ generatePSIerror <- function(
 }
 
 plotPSIerror <- function(PSIerror) {
-    SW.meandiff.summa <- PSIerror %>% group_by(splice_type) %>%
+    md <- rbind(PSIerror, PSIerror %>% mutate(splice_type = "All Events"))
+    summa <- md %>% 
+        dplyr::select(splice_type, mean_diff) %>% group_by(splice_type) %>%
         summarize(
             mean_error = mean_diff, 
             cumfreq = seq_len(n()) * 100 / n()
-        ) %>% ungroup() %>% arrange(mean_error)
-    df <- rbind(
-        SW.meandiff.summa, 
-        SW.meandiff.summa %>% mutate(splice_type = "All Events")
-    )
-    p <- ggplot(df, 
+        ) %>% ungroup() %>% arrange(mean_error) %>% clean_ROC_summa(splice_type)
+    p <- ggplot(summa, 
         aes(x = mean_error * 100, y = cumfreq, color = splice_type)) + 
         geom_line() + theme_white_legend + facet_wrap(vars(splice_type))
     return(p)

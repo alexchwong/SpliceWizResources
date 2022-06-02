@@ -116,10 +116,14 @@ source("groundTruth.R")
 # Get ground truth values:
 gt <- getGroundTruth("flux_files/", "Reference/")
 
-# Get optimized filters (from the SpliceWiz paper)
+# Get default filters
 filters <- getDefaultFilters()
-optFilters <- filters[c(1,3,4,5)]
+
+# baseline filters (from the SpliceWiz paper)
 baseFilters <- filters[c(1)]
+
+# optimized filters (from the SpliceWiz paper)
+optFilters <- filters[c(1,3,4,5)]
 
 # Apply optimized filters
 se.opt <- se[applyFilters(se, optFilters),]
