@@ -112,7 +112,7 @@ plotPSIerror <- function(PSIerror) {
 }
 
 getPSIerrorAUC <- function(PSIerror, label = "Unfiltered") {
-    md <- rbind(PSIerror, PSIerror %>% mutate(splice_type == "All Events"))
+    md <- rbind(PSIerror, PSIerror %>% mutate(splice_type = "All Events"))
     summa <- md %>% 
         dplyr::select(splice_type, mean_diff) %>% 
         summa_ROC("splice_type") %>%

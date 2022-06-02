@@ -43,6 +43,8 @@ flux-simulator generated sequencing data.
 
 ### Usage (in R/RStudio)
 
+### Example usage
+
 ```{r}
 library(SpliceWiz)
 setwd("./simulation")
@@ -97,6 +99,31 @@ p <- plotCoverage(se.filtered, res_limma$EventName[1],
 
 as_ggplot_cov(p) # displays ggplot (static plot)
 p$final_plot     # displays plotly object (interactive plot)
+```
+
+### Reproduce accuracy and AUROC metrics in the SpliceWiz paper
+
+Assuming the above code has already been run:
+
+```{r}
+source("groundTruth.R")
+
+# Get ground truth values:
+gt <- getGroundTruth("flux_files/", "Reference/")
+
+# Get optimized filters (from the SpliceWiz paper)
+filters <- getDefaultFilters()
+optFilters <- filters[c(1,3,4,5)]
+baseFilters <- filters[c(1)]
+
+# Apply optimized filters
+se.opt <- se[applyFilters(se, optFilters),]
+res <- ASE_DoubleExpSeq(se.opt, "Biology", "A", "B")
+
+# PSI error AUC
+PSIerror <- generatePSIerrors(se, res, gt, colnames(se)[1:3], "Reference")
+PSIerror$splice_type[PSIerror$splice_type %in% c("A3SS", "A5SS")] <- "AltSS"
+PSIerror$splice_type[PSIerror$splice_type %in% c("AFE", "ALE")] <- "AltTE"
 ```
 
 ## Mappability Exclusion Resources for SpliceWiz
