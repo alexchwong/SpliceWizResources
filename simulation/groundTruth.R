@@ -70,13 +70,126 @@ getGroundTruth <- function(flux_dir, ref_path) {
     gt_ttest$meanPSI_B <- PSI.mean$mean_B[match(gt_ttest$EventName, rownames(PSI.mean))]
     gt_ttest$deltaPSI <- gt_ttest$meanPSI_A - gt_ttest$meanPSI_B
     
-    final <- list(
+    gt <- list(
         gt_expr = ground_truth_expr,
         gt_PSI = PSI.gt,
         gt_diff = gt_ttest
     )
-    return(final)
+    return(gt)
 }
+
+generatePSIerror <- function(
+        se, DE_results, gt,
+        samplenames = colnames(se),
+        reference_path
+) {
+    res <- DE_results %>% filter(EventType != "IR")
+    splice <- fst::read.fst(file.path(reference_path, "fst", "Splice.fst"))
+    PSI <- makeMatrix(se, res$EventName, 
+        logit_max = 10, na.percent.max = 1.0)
+    # PSI <- PSI[rownames(PSI) %in% rownames(gt_PSI),]
+    PSI_mean <- rowMeans(PSI[,samplenames])
+    PSI.gt.compare <- rowMeans(gt$gt_PSI[rownames(PSI), samplenames])
+    PSI.diff <- PSI.gt.compare - PSI_mean
+    PSIerror <- data.frame(
+        EventName = rownames(PSI),
+        mean_diff = abs(PSI.diff),
+        splice_type = splice$EventType[match(rownames(PSI), splice$EventName)]
+    ) %>% arrange(mean_diff) %>% filter(is.finite(mean_diff))
+    return(PSIerror)
+}
+
+plotPSIerror <- function(PSIerror) {
+    SW.meandiff.summa <- PSIerror %>% group_by(splice_type) %>%
+        summarize(
+            mean_error = mean_diff, 
+            cumfreq = seq_len(n()) * 100 / n()
+        ) %>% ungroup() %>% arrange(mean_error)
+    p <- ggplot(SW.meandiff.summa, 
+        aes(x = mean_error * 100, y = cumfreq, color = splice_type)) + 
+        geom_line() + theme_white_legend
+    return(p)
+}
+
+getPSIerrorAUC <- function(PSIerror, label = "Unfiltered") {
+    md <- rbind(PSIerror, PSIerror %>% mutate(splice_type == "All Events"))
+    summa <- md %>% 
+        dplyr::select(splice_type, mean_diff) %>% 
+        summa_ROC("splice_type") %>%
+        mutate(method = label) %>% 
+        clean_ROC_summa(splice_type, method)
+    PSIerrorAUC <- get_ROC_values(summa)
+    return(PSIerrorAUC)
+}
+
+generateScoresAndClass <- function(
+        DE_results, gt, reference_path,
+        padj_threshold = 0.05,
+        log2_min_threshold = -1,
+        deltaPSI_threshold = 0.05
+) {
+    splice <- fst::read.fst(file.path(reference_path, "fst", "Splice.fst"))
+    gt_ttest <- gt$gt_diff
+    gt_ttest$log2_min <- with(gt_ttest, 
+        ifelse(log2_mean_A < log2_mean_B, log2_mean_A, log2_mean_B)
+    )
+    gt_ttest$evaluate <- with(gt_ttest, log2_min > log2_min_threshold)
+    gt_ttest$truth <- with(gt_ttest, 
+        padj < padj_threshold & 
+        log2_min > log2_min_threshold & 
+        abs(deltaPSI) > deltaPSI_threshold
+    )
+    gt_ttest$EventName <- splice$EventName[match(gt_ttest$EventID, splice$EventID)]
+    
+    DE_results <- DE_results %>% filter(EventType != "IR")
+    DE_results$truth <- gt_ttest$truth[match(DE_results$EventName, gt_ttest$EventName)]
+    DE_results$evaluate <- gt_ttest$evaluate[match(DE_results$EventName, gt_ttest$EventName)]
+    DE_results$EventID <- gt_ttest$EventID[match(DE_results$EventName, gt_ttest$EventName)]
+    
+    if("pvalue" %in% colnames(DE_results))
+        DE_results <- DE_results %>% dplyr::rename(P.Value = pvalue)
+    
+    ScoresAndClass <- DE_results[, c("EventID", "P.Value", "truth", "evaluate")] %>%
+        mutate(splice_type = tstrsplit(EventID, split="#", fixed=TRUE)[[1]])
+    ScoresAndClass$P.Value[!is.finite(ScoresAndClass$P.Value)] <- 1
+    ScoresAndClass <- ScoresAndClass %>% arrange(P.Value) %>% 
+        filter(evaluate) %>% dplyr::select(splice_type, truth, P.Value)
+    return(ScoresAndClass)
+}
+
+generateROCdata <- function(ScoresAndClass) {
+    # Overall
+    roc <- suppressWarnings(
+        ROCit::rocit(-ScoresAndClass$P.Value, ScoresAndClass$truth)
+    )
+    roc_df <- rocit_2_df(roc) %>% mutate(splice_type = "All Events")
+    ROCdata <- roc_df
+    # Modality Specific
+    for(st in unique(ScoresAndClass$splice_type)) {
+        sc_subset <- ScoresAndClass %>% filter(splice_type == st)
+        roc <- suppressWarnings(
+            ROCit::rocit(-sc_subset$P.Value, sc_subset$truth)
+        )
+        roc_df <- rocit_2_df(roc) %>% mutate(splice_type = st)
+        ROCdata <- rbind(ROCdata, roc_df)
+    }
+    return(ROCdata)
+}
+
+plotROCdata <- function(ROCdata) {
+    p <- ggplot(ROCdata, aes(y = TPR, x = FPR)) + 
+        geom_line() + theme_white_legend +
+        facet_wrap(vars(splice_type))
+    p
+}
+
+getAUROC <- function(ROCdata) {
+    ret <- ROCdata %>% group_by(splice_type) %>% 
+        summarize(AUROC = max(cum_AUC)) %>% ungroup()
+    return(as.data.frame(ret))
+}
+
+## Internal functions
 
 # Perform a t-test for a given set of expressions
 test_diff_PSI <- function(cts, reference_path) {
@@ -150,120 +263,6 @@ test_diff_PSI <- function(cts, reference_path) {
     
     return(t_test.ranked)
 }
-
-generatePSIerrors <- function(
-        se, DE_results, gt,
-        samplenames = colnames(se),
-        reference_path
-) {
-    res <- DE_results %>% filter(EventType != "IR")
-    splice <- fst::read.fst(file.path(reference_path, "fst", "Splice.fst"))
-    PSI <- makeMatrix(se, res$EventName, 
-        logit_max = 10, na.percent.max = 1.0)
-    # PSI <- PSI[rownames(PSI) %in% rownames(gt_PSI),]
-    PSI_mean <- rowMeans(PSI[,samplenames])
-    PSI.gt.compare <- rowMeans(gt$gt_PSI[rownames(PSI), samplenames])
-    PSI.diff <- PSI.gt.compare - PSI_mean
-    SWmeandiff <- data.frame(
-        EventName = rownames(PSI),
-        mean_diff = abs(PSI.diff),
-        splice_type = splice$EventType[match(rownames(PSI), splice$EventName)]
-    ) %>% arrange(mean_diff) %>% filter(is.finite(mean_diff))
-    return(SWmeandiff)
-}
-
-plotPSIerrors <- function(meandiff) {
-    SW.meandiff.summa <- meandiff %>% group_by(splice_type) %>%
-        summarize(
-            mean_error = mean_diff, 
-            cumfreq = seq_len(n()) * 100 / n()
-        ) %>% ungroup() %>% arrange(mean_error)
-    p <- ggplot(SW.meandiff.summa, 
-        aes(x = mean_error * 100, y = cumfreq, color = splice_type)) + 
-        geom_line() + theme_white_legend
-    return(p)
-}
-
-getPSIerrorAUC <- function(meandiff, label = "Unfiltered") {
-    summa <- meandiff %>% 
-        dplyr::select(splice_type, mean_diff) %>% 
-        summa_ROC("splice_type") %>%
-        mutate(method = label) %>% 
-        clean_ROC_summa(splice_type, method)
-    get_ROC_values(summa)
-}
-
-generateScoresAndClass <- function(
-        DE_results, gt, reference_path,
-        padj_threshold = 0.05,
-        log2_min_threshold = -1,
-        deltaPSI_threshold = 0.05
-) {
-    splice <- fst::read.fst(file.path(reference_path, "fst", "Splice.fst"))
-    gt_ttest <- gt$gt_diff
-    gt_ttest$log2_min <- with(gt_ttest, 
-        ifelse(log2_mean_A < log2_mean_B, log2_mean_A, log2_mean_B)
-    )
-    gt_ttest$evaluate <- with(gt_ttest, log2_min > log2_min_threshold)
-    gt_ttest$truth <- with(gt_ttest, 
-        padj < padj_threshold & 
-        log2_min > log2_min_threshold & 
-        abs(deltaPSI) > deltaPSI_threshold
-    )
-    gt_ttest$EventName <- splice$EventName[match(gt_ttest$EventID, splice$EventID)]
-    
-    DE_results <- DE_results %>% filter(EventType != "IR")
-    DE_results$truth <- gt_ttest$truth[match(DE_results$EventName, gt_ttest$EventName)]
-    DE_results$evaluate <- gt_ttest$evaluate[match(DE_results$EventName, gt_ttest$EventName)]
-    DE_results$EventID <- gt_ttest$EventID[match(DE_results$EventName, gt_ttest$EventName)]
-    
-    if("pvalue" %in% colnames(DE_results))
-        DE_results <- DE_results %>% dplyr::rename(P.Value = pvalue)
-    
-    tally <- DE_results[, c("EventID", "P.Value", "truth", "evaluate")] %>%
-        mutate(splice_type = tstrsplit(EventID, split="#", fixed=TRUE)[[1]])
-    tally$P.Value[!is.finite(tally$P.Value)] <- 1
-    tally <- tally %>% arrange(P.Value)
-    tally <- tally %>% filter(evaluate) %>% 
-        dplyr::select(splice_type, truth, P.Value)
-    return(tally)
-}
-
-generateROCdata <- function(
-    ScoresAndClass
-) {
-    # Overall
-    roc <- suppressWarnings(
-        ROCit::rocit(-ScoresAndClass$P.Value, ScoresAndClass$truth)
-    )
-    roc_df <- rocit_2_df(roc) %>% mutate(splice_type = "All Events")
-    ret_df <- roc_df
-    # Modality Specific
-    for(st in unique(ScoresAndClass$splice_type)) {
-        sc_subset <- ScoresAndClass %>% filter(splice_type == st)
-        roc <- suppressWarnings(
-            ROCit::rocit(-sc_subset$P.Value, sc_subset$truth)
-        )
-        roc_df <- rocit_2_df(roc) %>% mutate(splice_type = st)
-        ret_df <- rbind(ret_df, roc_df)
-    }
-    return(ret_df)
-}
-
-plotROCdata <- function(ROCdata) {
-    p <- ggplot(ret_df, aes(y = TPR, x = FPR)) + 
-        geom_line() + theme_white_legend +
-        facet_wrap(vars(splice_type))
-    p
-}
-
-getAUROC <- function(ROCdata) {
-    ret <- ROCdata %>% group_by(splice_type) %>% 
-        summarize(AUROC = max(cum_AUC)) %>% ungroup()
-    return(as.data.frame(ret))
-}
-
-## Internal functions
 
 summa_ROC <- function(df, bycol = "splice_type") {
     df$group_col <- "same"
