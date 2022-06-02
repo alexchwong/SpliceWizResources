@@ -127,10 +127,12 @@ optFilters <- filters[c(1,3,4,5)]
 
 # Apply optimized filters
 se.opt <- se[applyFilters(se, optFilters),]
+
+# DoubleExpSeq-based differential analysis
 res <- ASE_DoubleExpSeq(se.opt, "Biology", "A", "B")
 
 # PSI error AUC
-PSIerror <- generatePSIerrors(se, res, gt, colnames(se)[1:3], "Reference")
+PSIerror <- generatePSIerror(se, res, gt, colnames(se)[1:3], "Reference")
 PSIerror$splice_type[PSIerror$splice_type %in% c("A3SS", "A5SS")] <- "AltSS"
 PSIerror$splice_type[PSIerror$splice_type %in% c("AFE", "ALE")] <- "AltTE"
 getPSIerrorAUC(PSIerror)

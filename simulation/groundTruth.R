@@ -179,7 +179,7 @@ generateROCdata <- function(ScoresAndClass) {
 }
 
 plotROCdata <- function(ROCdata) {
-    p <- ggplot(ROCdata, aes(y = TPR, x = FPR)) + 
+    p <- ggplot(ROCdata, aes(y = TPR, x = FPR, color = splice_type)) + 
         geom_line() + theme_white_legend +
         facet_wrap(vars(splice_type))
     p
