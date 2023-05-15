@@ -1,5 +1,8 @@
 # SpliceWizResources
 
+This branch contains supplementary data for the biorxiv version of the
+SpliceWiz manuscript (https://www.biorxiv.org/content/10.1101/2022.07.05.498887v1)
+
 This repository contains the following resources:
 
 * Simulation data for SpliceWiz
